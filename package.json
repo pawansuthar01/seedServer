@@ -1,0 +1,19 @@
+{
+  "name": "seedserver",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "seed": "npx tsx seed-lagar.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@prisma/client": "^5.22.0",
+    "bcryptjs": "^2.4.3",
+    "prisma": "^5.22.0",
+    "tsx": "^4.19.2"
+  }
+}
