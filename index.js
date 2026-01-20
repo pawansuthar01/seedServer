@@ -65,7 +65,10 @@ app.use((req, res, next) => {
     body: req.method !== "GET" ? req.body : undefined,
   };
 
-  console.log(`${req.method} ${req.url} - IP: ${logData.ip}`);
+  // Skip logging for /logs and /events to avoid noise in SSE
+  if (req.url !== "/logs" && req.url !== "/events") {
+    console.log(`${req.method} ${req.url} - IP: ${logData.ip}`);
+  }
 
   next();
 });
