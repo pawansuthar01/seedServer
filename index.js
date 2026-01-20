@@ -18,13 +18,13 @@ console.log = (...args) => {
     client.res.write(`data: ${JSON.stringify({ message, timestamp })}\n\n`);
   });
 
-  // Push log to URL if configured
-  if (process.env.PUSH_URL) {
+  // Push log to URL if configured and not localhost
+  if (process.env.PUSH_URL && !process.env.PUSH_URL.includes("localhost")) {
     fetch(process.env.PUSH_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ message, timestamp }),
-    }).catch((err) => console.error("Push failed:", err));
+    }).catch((err) => originalConsoleError("Push failed:", err));
   }
 };
 
@@ -41,8 +41,8 @@ console.error = (...args) => {
     client.res.write(`data: ${JSON.stringify({ message, timestamp })}\n\n`);
   });
 
-  // Push log to URL if configured
-  if (process.env.PUSH_URL) {
+  // Push log to URL if configured and not localhost
+  if (process.env.PUSH_URL && !process.env.PUSH_URL.includes("localhost")) {
     fetch(process.env.PUSH_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
