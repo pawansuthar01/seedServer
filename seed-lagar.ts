@@ -24,7 +24,28 @@ function addDays(date: Date, days: number): Date {
   return result;
 }
 
+async function deleteAllDataInDB() {
+  console.log("🧹 Clearing existing data...");
+  await prisma.auditLog.deleteMany();
+  await prisma.salaryBreakdown.deleteMany();
+  await prisma.salary.deleteMany();
+  await prisma.correctionRequest.deleteMany();
+  await prisma.attendance.deleteMany();
+  await prisma.shiftConfiguration.deleteMany();
+  await prisma.notification.deleteMany();
+  await prisma.pushSubscription.deleteMany();
+  await prisma.otp.deleteMany();
+  await prisma.companyInvitation.deleteMany();
+  await prisma.user.deleteMany();
+  await prisma.company.deleteMany();
+  await prisma.systemSetting.deleteMany();
+}
+
 async function main() {
+  if (process.env.CLEAR_DB_BEFORE_LAGAR_SEEDING === "true") {
+    await deleteAllDataInDB();
+    console.log("✅ Existing data cleared.");
+  }
   console.log("🌱 Seeding Lagar Data...");
 
   // Create additional companies for lagar data
@@ -56,7 +77,11 @@ async function main() {
   ];
 
   const lagarCompanies = [];
-  for (const data of lagarCompanyData) {
+  for (let i = 0; i < lagarCompanyData.length; i++) {
+    const data = lagarCompanyData[i];
+    console.log(
+      `Creating company ${i + 1}/${lagarCompanyData.length}: ${data.name}`,
+    );
     const company = await prisma.company.create({
       data: {
         name: data.name,
@@ -101,8 +126,12 @@ async function main() {
 
   for (let i = 0; i < lagarCompanies.length; i++) {
     const company = lagarCompanies[i];
+    console.log(
+      `Creating users for company ${i + 1}/${lagarCompanies.length}: ${company.name}`,
+    );
 
     // 1 Admin per company
+    console.log(`Creating admin for ${company.name}`);
     const admin = await prisma.user.create({
       data: {
         email: `lagaradmin${i + 1}@${company.name.toLowerCase().replace(/\s+/g, "")}.com`,
@@ -125,7 +154,10 @@ async function main() {
 
     // 50-80 Staff per company
     const staffCount = getRandomInt(50, 80);
+    console.log(`Creating ${staffCount} staff members for ${company.name}`);
     for (let j = 0; j < staffCount; j++) {
+      if (j % 20 === 0 && j > 0)
+        console.log(`Created ${j}/${staffCount} staff for ${company.name}`);
       const salaryType = getRandomElement([
         "MONTHLY",
         "HOURLY",
@@ -191,6 +223,9 @@ async function main() {
       });
       lagarUsers.push(staffMember);
     }
+    console.log(
+      `Completed users for ${company.name}: 1 admin + ${staffCount} staff`,
+    );
   }
 
   console.log(`✅ Created ${lagarUsers.length} Lagar users`);
@@ -201,7 +236,16 @@ async function main() {
   const sixMonthsAgo = addDays(today, -180);
 
   let lagarAttendanceCount = 0;
-  for (const user of lagarUsers.filter((u) => u.role === "STAFF")) {
+  const staffUsers = lagarUsers.filter((u) => u.role === "STAFF");
+  console.log(
+    `Processing attendance for ${staffUsers.length} staff members over 180 days each`,
+  );
+  for (let i = 0; i < staffUsers.length; i++) {
+    const user = staffUsers[i];
+    if (i % 50 === 0)
+      console.log(
+        `Processing attendance for user ${i + 1}/${staffUsers.length}`,
+      );
     for (let days = 0; days < 180; days++) {
       const attendanceDate = addDays(sixMonthsAgo, days);
       const dayOfWeek = attendanceDate.getDay();
@@ -275,6 +319,10 @@ async function main() {
       });
 
       lagarAttendanceCount++;
+      if (lagarAttendanceCount % 1000 === 0)
+        console.log(
+          `Created ${lagarAttendanceCount} attendance records so far`,
+        );
     }
   }
   console.log(`✅ Created ${lagarAttendanceCount} Lagar attendance records`);
@@ -299,11 +347,4 @@ function addHours(date: Date, hours: number): Date {
   return result;
 }
 
-main()
-  .catch((e) => {
-    console.error("❌ Lagar seed failed:", e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+export { main as default };

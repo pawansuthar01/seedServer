@@ -2,8 +2,11 @@
   "name": "seedserver",
   "version": "1.0.0",
   "main": "index.js",
+  "module": "import",
   "scripts": {
     "seed": "npx tsx seed-lagar.ts",
+    "start": "npx tsx index.js",
+    "generate": "npx prisma generate",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -13,7 +16,11 @@
   "dependencies": {
     "@prisma/client": "^5.22.0",
     "bcryptjs": "^2.4.3",
+    "express": "^5.2.1",
     "prisma": "^5.22.0",
     "tsx": "^4.19.2"
+  },
+  "devDependencies": {
+    "dotenv": "^17.2.3"
   }
 }
