@@ -76,45 +76,39 @@ async function main() {
     { name: "Lagar Consulting", industry: "Consulting", size: "Medium" },
   ];
 
-  const lagarCompanies = [];
-  for (let i = 0; i < lagarCompanyData.length; i++) {
-    const data = lagarCompanyData[i];
-    console.log(
-      `Creating company ${i + 1}/${lagarCompanyData.length}: ${data.name}`,
-    );
-    const company = await prisma.company.create({
-      data: {
-        name: data.name,
-        description: `${data.name} - Specialized in ${data.industry}`,
-        status: "ACTIVE",
-        shiftStartTime: "09:00",
-        shiftEndTime: "18:00",
-        gracePeriodMinutes: 15,
-        minWorkingHours: 4.0,
-        maxDailyHours: 12.0,
-        autoPunchOutBufferMinutes: 30,
-        locationLat: 28.6139 + (Math.random() - 0.5) * 2,
-        locationLng: 77.209 + (Math.random() - 0.5) * 2,
-        locationRadius: 100.0,
-        overtimeThresholdHours: 2.0,
-        nightPunchInWindowHours: 2.0,
-        defaultSalaryType: getRandomElement([
-          "MONTHLY",
-          "HOURLY",
-          "DAILY",
-        ] as SalaryType[]),
-        overtimeMultiplier: 1.5,
-        enableLatePenalty: true,
-        latePenaltyPerMinute: 2.0,
-        enableAbsentPenalty: true,
-        halfDayThresholdHours: 4.0,
-        absentPenaltyPerDay: 500.0,
-        pfPercentage: 12.0,
-        esiPercentage: 0.75,
-      },
-    });
-    lagarCompanies.push(company);
-  }
+  const companyCreateData = lagarCompanyData.map((data, i) => ({
+    name: data.name,
+    description: `${data.name} - Specialized in ${data.industry}`,
+    status: "ACTIVE" as AccountStatus,
+    shiftStartTime: "09:00",
+    shiftEndTime: "18:00",
+    gracePeriodMinutes: 15,
+    minWorkingHours: 4.0,
+    maxDailyHours: 12.0,
+    autoPunchOutBufferMinutes: 30,
+    locationLat: 28.6139 + (Math.random() - 0.5) * 2,
+    locationLng: 77.209 + (Math.random() - 0.5) * 2,
+    locationRadius: 100.0,
+    overtimeThresholdHours: 2.0,
+    nightPunchInWindowHours: 2.0,
+    defaultSalaryType: getRandomElement([
+      "MONTHLY",
+      "HOURLY",
+      "DAILY",
+    ] as SalaryType[]),
+    overtimeMultiplier: 1.5,
+    enableLatePenalty: true,
+    latePenaltyPerMinute: 2.0,
+    enableAbsentPenalty: true,
+    halfDayThresholdHours: 4.0,
+    absentPenaltyPerDay: 500.0,
+    pfPercentage: 12.0,
+    esiPercentage: 0.75,
+  }));
+
+  const lagarCompanies = await prisma.company.createManyAndReturn({
+    data: companyCreateData,
+  });
   console.log(`✅ Created ${lagarCompanies.length} Lagar companies`);
 
   // Create users for lagar companies
@@ -122,42 +116,36 @@ async function main() {
   const adminPassword = await bcrypt.hash("lagaradmin123", 10);
   const staffPassword = await bcrypt.hash("lagarstaff123", 10);
 
-  const lagarUsers = [];
+  const userCreateData = [];
 
   for (let i = 0; i < lagarCompanies.length; i++) {
     const company = lagarCompanies[i];
     console.log(
-      `Creating users for company ${i + 1}/${lagarCompanies.length}: ${company.name}`,
+      `Preparing users for company ${i + 1}/${lagarCompanies.length}: ${company.name}`,
     );
 
     // 1 Admin per company
-    console.log(`Creating admin for ${company.name}`);
-    const admin = await prisma.user.create({
-      data: {
-        email: `lagaradmin${i + 1}@${company.name.toLowerCase().replace(/\s+/g, "")}.com`,
-        phone: `+91${9500000000 + i}`,
-        password: adminPassword,
-        role: "ADMIN",
-        status: "ACTIVE",
-        companyId: company.id,
-        firstName: `LagarAdmin${i + 1}`,
-        lastName: company.name.split(" ")[0],
-        onboardingCompleted: true,
-        baseSalary: 90000,
-        salaryType: "MONTHLY",
-        workingDays: 26,
-        pfEsiApplicable: true,
-        joiningDate: addDays(new Date(), -365),
-      },
+    userCreateData.push({
+      email: `lagaradmin${i + 1}@${company.name.toLowerCase().replace(/\s+/g, "")}.com`,
+      phone: `+91${9500000000 + i}`,
+      password: adminPassword,
+      role: "ADMIN" as Role,
+      status: "ACTIVE" as AccountStatus,
+      companyId: company.id,
+      firstName: `LagarAdmin${i + 1}`,
+      lastName: company.name.split(" ")[0],
+      onboardingCompleted: true,
+      baseSalary: 90000,
+      salaryType: "MONTHLY" as SalaryType,
+      workingDays: 26,
+      pfEsiApplicable: true,
+      joiningDate: addDays(new Date(), -365),
     });
-    lagarUsers.push(admin);
 
     // 50-80 Staff per company
     const staffCount = getRandomInt(50, 80);
-    console.log(`Creating ${staffCount} staff members for ${company.name}`);
+    console.log(`Preparing ${staffCount} staff members for ${company.name}`);
     for (let j = 0; j < staffCount; j++) {
-      if (j % 20 === 0 && j > 0)
-        console.log(`Created ${j}/${staffCount} staff for ${company.name}`);
       const salaryType = getRandomElement([
         "MONTHLY",
         "HOURLY",
@@ -179,55 +167,52 @@ async function main() {
           break;
       }
 
-      const staffMember = await prisma.user.create({
-        data: {
-          email: `lagarstaff${j + 1}.company${i + 1}@${company.name.toLowerCase().replace(/\s+/g, "")}.com`,
-          phone: `+91${9600000000 + i * 100 + j}`,
-          password: staffPassword,
-          role: "STAFF",
-          status: "ACTIVE",
-          companyId: company.id,
-          firstName: getRandomElement([
-            "Arjun",
-            "Priya",
-            "Rohan",
-            "Ananya",
-            "Vikram",
-            "Kavya",
-            "Aditya",
-            "Sneha",
-            "Rahul",
-            "Megha",
-          ]),
-          lastName: getRandomElement([
-            "Sharma",
-            "Verma",
-            "Gupta",
-            "Singh",
-            "Patel",
-            "Jain",
-            "Agarwal",
-            "Yadav",
-            "Mishra",
-            "Chauhan",
-          ]),
-          onboardingCompleted: true,
-          baseSalary: baseSalary || null,
-          hourlyRate: hourlyRate || null,
-          dailyRate: dailyRate || null,
-          salaryType,
-          workingDays: 26,
-          pfEsiApplicable: Math.random() > 0.3,
-          joiningDate: addDays(new Date(), -getRandomInt(30, 730)),
-        },
+      userCreateData.push({
+        email: `lagarstaff${j + 1}.company${i + 1}@${company.name.toLowerCase().replace(/\s+/g, "")}.com`,
+        phone: `+91${9600000000 + i * 100 + j}`,
+        password: staffPassword,
+        role: "STAFF" as Role,
+        status: "ACTIVE" as AccountStatus,
+        companyId: company.id,
+        firstName: getRandomElement([
+          "Arjun",
+          "Priya",
+          "Rohan",
+          "Ananya",
+          "Vikram",
+          "Kavya",
+          "Aditya",
+          "Sneha",
+          "Rahul",
+          "Megha",
+        ]),
+        lastName: getRandomElement([
+          "Sharma",
+          "Verma",
+          "Gupta",
+          "Singh",
+          "Patel",
+          "Jain",
+          "Agarwal",
+          "Yadav",
+          "Mishra",
+          "Chauhan",
+        ]),
+        onboardingCompleted: true,
+        baseSalary: baseSalary || null,
+        hourlyRate: hourlyRate || null,
+        dailyRate: dailyRate || null,
+        salaryType,
+        workingDays: 26,
+        pfEsiApplicable: Math.random() > 0.3,
+        joiningDate: addDays(new Date(), -getRandomInt(30, 730)),
       });
-      lagarUsers.push(staffMember);
     }
-    console.log(
-      `Completed users for ${company.name}: 1 admin + ${staffCount} staff`,
-    );
   }
 
+  const lagarUsers = await prisma.user.createManyAndReturn({
+    data: userCreateData,
+  });
   console.log(`✅ Created ${lagarUsers.length} Lagar users`);
 
   // Create attendance data for lagar users (last 6 months)
@@ -235,16 +220,25 @@ async function main() {
   const today = new Date();
   const sixMonthsAgo = addDays(today, -180);
 
-  let lagarAttendanceCount = 0;
+  const attendanceCreateData = [];
   const staffUsers = lagarUsers.filter((u) => u.role === "STAFF");
   console.log(
-    `Processing attendance for ${staffUsers.length} staff members over 180 days each`,
+    `Preparing attendance for ${staffUsers.length} staff members over 180 days each`,
   );
+
+  // Create a map of companyId to adminId for quick lookup
+  const adminMap = new Map();
+  lagarUsers
+    .filter((u) => u.role === "ADMIN")
+    .forEach((admin) => {
+      adminMap.set(admin.companyId, admin.id);
+    });
+
   for (let i = 0; i < staffUsers.length; i++) {
     const user = staffUsers[i];
     if (i % 50 === 0)
       console.log(
-        `Processing attendance for user ${i + 1}/${staffUsers.length}`,
+        `Preparing attendance for user ${i + 1}/${staffUsers.length}`,
       );
     for (let days = 0; days < 180; days++) {
       const attendanceDate = addDays(sixMonthsAgo, days);
@@ -296,42 +290,37 @@ async function main() {
           break;
       }
 
-      await prisma.attendance.create({
-        data: {
-          userId: user.id,
-          companyId: user.companyId!,
-          attendanceDate,
-          punchIn,
-          punchOut,
-          workingHours: workingHours || null,
-          status,
-          approvedBy:
-            status === "APPROVED"
-              ? lagarUsers.find(
-                  (u) => u.companyId === user.companyId && u.role === "ADMIN",
-                )?.id
-              : null,
-          approvedAt:
-            status === "APPROVED"
-              ? addHours(attendanceDate, getRandomInt(1, 8))
-              : null,
-        },
+      attendanceCreateData.push({
+        userId: user.id,
+        companyId: user.companyId!,
+        attendanceDate,
+        punchIn,
+        punchOut,
+        workingHours: workingHours || null,
+        status,
+        approvedBy:
+          status === "APPROVED" ? adminMap.get(user.companyId!) : null,
+        approvedAt:
+          status === "APPROVED"
+            ? addHours(attendanceDate, getRandomInt(1, 8))
+            : null,
       });
-
-      lagarAttendanceCount++;
-      if (lagarAttendanceCount % 1000 === 0)
-        console.log(
-          `Created ${lagarAttendanceCount} attendance records so far`,
-        );
     }
   }
-  console.log(`✅ Created ${lagarAttendanceCount} Lagar attendance records`);
+
+  console.log(`Inserting ${attendanceCreateData.length} attendance records...`);
+  await prisma.attendance.createMany({
+    data: attendanceCreateData,
+  });
+  console.log(
+    `✅ Created ${attendanceCreateData.length} Lagar attendance records`,
+  );
 
   console.log("\n🎉 LAGAR DATA SEED COMPLETED SUCCESSFULLY!");
   console.log("📊 LAGAR DATA SUMMARY:");
   console.log(`   • ${lagarCompanies.length} Lagar Companies`);
   console.log(`   • ${lagarUsers.length} Lagar Users`);
-  console.log(`   • ${lagarAttendanceCount} Lagar Attendance Records`);
+  console.log(`   • ${attendanceCreateData.length} Lagar Attendance Records`);
 
   console.log("\n🔑 LAGAR LOGIN CREDENTIALS:");
   console.log("Lagar Admin → lagaradmin1@lagarindustries.com / lagaradmin123");
